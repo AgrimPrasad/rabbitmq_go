@@ -30,32 +30,33 @@ func Publish() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare(
-		"task_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+	exchName := "logs"
+	err = ch.ExchangeDeclare(
+		exchName, // name
+		"fanout", // type
+		true,     // durable
+		false,    // auto-deleted
+		false,    // internal
+		false,    // no-wait
+		nil,      // arguments
 	)
-	failOnError(err, fmt.Sprintf("Failed to declare queue %s", q.Name))
+	failOnError(err, fmt.Sprintf("Failed to declare exchange %s", exchName))
 
 	input := make(chan string)
 
 	go func() {
 		for {
 			err = ch.Publish(
-				"",     // exchange
-				q.Name, // routing key
-				false,  // mandatory
-				false,  // immediate
+				exchName, // exchange
+				"",       // routing key
+				false,    // mandatory
+				false,    // immediate
 				amqp.Publishing{
-					DeliveryMode: amqp.Persistent,
-					ContentType:  "text/plain",
-					Body:         []byte(<-input),
+					ContentType: "text/plain",
+					Body:        []byte(<-input),
 				},
 			)
-			failOnError(err, fmt.Sprintf("Failed to publish a message to queue %s", q.Name))
+			failOnError(err, fmt.Sprintf("Failed to publish a log to exchange %s", exchName))
 		}
 	}()
 

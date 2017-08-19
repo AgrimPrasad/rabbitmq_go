@@ -29,22 +29,26 @@ func Consume() {
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
-	err = ch.Qos(
-		1,     //prefetchCount
-		0,     //prefetchSize
-		false, //global
-	)
-	failOnError(err, fmt.Sprintf("Failed to set QoS on channel"))
-
 	q, err := ch.QueueDeclare(
-		"task_queue", // name
-		true,         // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		"",    // name
+		false, // durable
+		false, // delete when unused
+		true,  // exclusive
+		false, // no-wait
+		nil,   // arguments
 	)
 	failOnError(err, fmt.Sprintf("Failed to declare queue %s", q.Name))
+
+	exchName := "logs"
+
+	err = ch.QueueBind(
+		q.Name,
+		"",
+		exchName,
+		false,
+		nil,
+	)
+	failOnError(err, fmt.Sprintf("Failed to bind queue %s to exchange %s", q.Name, exchName))
 
 	msgs, err := ch.Consume(
 		q.Name, // queue
